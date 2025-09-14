@@ -7,6 +7,7 @@ import datetime as dt
 from tkinter import messagebox
 
 from UIMatching import Matching
+import openpyxl
 
 #TODO create 2 different archives for importing and visualizing historical data
 class Archive:
