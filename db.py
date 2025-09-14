@@ -1,5 +1,7 @@
 import sqlite3
 
+from pandas.core.accessor import delegate_names
+
 con = sqlite3.connect('database/database.db')
 cur= con.cursor()
 
@@ -28,10 +30,15 @@ record_table = ('CREATE TABLE IF NOT EXISTS record('
                 'FOREIGN KEY (id_cat) REFERENCES categories (id_cat)'
                 'FOREIGN KEY (id_subcat) REFERENCES sub_categories (id_subcat))')
 
-cur.execute(categories_table)
-cur.execute(sub_categories_table)
-cur.execute(matching_table)
-cur.execute(record_table)
+del_cat = 'DELETE FROM categories'
+del_subcat = 'DELETE FROM sub_categories'
+del_record = 'DELETE FROM record'
+del_match = 'DELETE FROM matching'
 
+cur.execute(del_match)
+cur.execute(del_cat)
+cur.execute(del_subcat)
+cur.execute(del_record)
 
+con.commit()
 con.close()

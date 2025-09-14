@@ -89,11 +89,7 @@ class Matching:
             string_text = self.string_text.get().upper()
 
             if string_text != '':
-                max_id = cur.execute('SELECT MAX(id_match) FROM matching').fetchone()[0]
-                if max_id is None:
-                    new_id=0
-                else:
-                    new_id =max_id + 1
+                new_id = cur.execute('SELECT COALESCE (MAX(id_match)+1,0) FROM matching').fetchone()[0]
 
                 cur.execute('INSERT INTO matching VALUES (?,?,?,?)',
                             (new_id,id_cat,id_subcat,string_text))

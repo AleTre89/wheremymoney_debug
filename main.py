@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 import sqlite3
+from functools import partial
 
 from UIArc_Imp import Archive
 from UICategories import Categories
@@ -32,8 +33,8 @@ def add_record():
 def goto_cat_mask():
     open_cat_mask = Categories()
 
-def goto_archive():
-    open_archive = Archive()
+def goto_archive(root):
+    open_archive = Archive(root)
 
 def goto_match():
     open_match = Matching()
@@ -56,8 +57,10 @@ subcategory_cbx = ttk.Combobox(mask, values=["Furniture","Maintenance"])
 
 #buttons
 add_button = tk.Button(mask, text="Add",command=add_record)
-import_button = tk.Button(mask, text="Import excel",command= goto_archive)
-archive_button = tk.Button(mask, text="Archive",command= goto_archive)
+import_button = tk.Button(mask, text="Import excel",
+                          command= partial(goto_archive,mask))
+archive_button = tk.Button(mask, text="Archive",
+                           command=partial(goto_archive,mask))
 categories_button = tk.Button(mask, text="Categories",command=goto_cat_mask)
 cat_matching_button = tk.Button(mask, text="Categories matching", command=goto_match)
 
@@ -80,8 +83,5 @@ import_button.grid(row=4,column=0,pady=10, padx=10)
 archive_button.grid(row=4,column=1,pady=10, padx=10)
 categories_button.grid(row=4,column=2,pady=10, padx=10)
 cat_matching_button.grid(row=4,column=3, pady=10, padx=10)
-
-
-
 
 mask.mainloop()

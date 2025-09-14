@@ -1,12 +1,17 @@
+import os.path
 import tkinter as tk
 from tkinter import ttk
 import pandas as pd
 import sqlite3
 import datetime as dt
+from tkinter import messagebox
 
+from UIMatching import Matching
+
+#TODO create 2 different archives for importing and visualizing historical data
 class Archive:
-    def __init__(self):
-        self.arc_mask = tk.Toplevel()
+    def __init__(self,root):
+        self.arc_mask = tk.Toplevel(root)
         self.arc_mask.title("Archive")
         self.arc_mask.geometry("1200x600")
 
@@ -31,7 +36,7 @@ class Archive:
 
 
 
-        self.description_text= tk.Label(self.arc_mask)
+        self.description_text= tk.Text(self.arc_mask,height=3,width=100,wrap="word")
 
 
         self.date_lbl = tk.Label(self.arc_mask,text='Date')
@@ -46,7 +51,7 @@ class Archive:
 
         self.update_button = tk.Button(self.arc_mask,text='Update', command=self.update_item)
         self.upload_button = tk.Button(self.arc_mask,text='Upload', command=self.upload_to_db)
-        self.cat_match_button = tk.Button(self.arc_mask,text='Category Matching')
+        self.cat_match_button = tk.Button(self.arc_mask,text='Category Matching',command=self.goto_match)
 
         self.arc_tree.grid(row=1,column=0,padx=10,pady=10,rowspan=7)
 
@@ -66,13 +71,15 @@ class Archive:
         self.description_text.grid(row=8,column=0,padx=10,pady=10)
 
 
-        self.arc_tree.bind('<ButtonRelease-1>',self.get_descr)
+        self.arc_tree.bind('<<TreeviewSelect>>',self.get_descr)
         self.cat_cbx.bind('<<ComboboxSelected>>',self.get_subcat)
 
         self.getdata()
         self.cbx_filling()
 
-        self.arc_mask.mainloop()
+
+    def goto_match(self):
+        match=Matching()
 
     def upload_to_db(self):
         tot_rec = self.arc_tree.get_children()
@@ -80,11 +87,7 @@ class Archive:
         for c in tot_rec:
             con = sqlite3.connect('database/database.db')
             cur = con.cursor()
-            max_id = cur.execute('SELECT MAX(id_record) FROM record').fetchone()[0]
-            if max_id is None:
-                id_record = 0
-            else:
-                id_record = max_id + 1
+            id_record = cur.execute('SELECT COALESCE(MAX(id_record)+1,0) FROM record').fetchone()[0]
 
             values_import = self.arc_tree.item(c)['values']
             #id_cat
@@ -117,6 +120,11 @@ class Archive:
             con.commit()
             con.close()
 
+            if os.path.exists('estratti/elenco.xlsx'):
+                os.remove('estratti/elenco.xlsx')
+
+
+
     def update_item(self):
         #TODO if cbx emtpy error
         cat_value = self.cat_cbx.get()
@@ -136,7 +144,11 @@ class Archive:
     def get_descr(self,event):
         desc_text = self.arc_tree.selection()[0]
         description = self.arc_tree.item(desc_text)['values']
-        self.description_text.config(text=description[2],wraplength='500')
+
+        self.description_text.config(state='normal')
+        self.description_text.delete('1.0','end')
+        self.description_text.insert('end',description[2])
+        self.description_text.config(state='disabled')
 
         self.date_text.config(text=description[0])
         self.amount_text.config(text=description[1])
@@ -171,9 +183,11 @@ class Archive:
     # DESCRIZIONE OPERAZIONE
     # IMPORTO IN EURO
     def getdata(self):
-        global cat_subcat_match
-        cat_subcat_match = ['', '']
-        df = pd.read_excel("./estratti/elenco.xlsx")
+        try:
+            df = pd.read_excel("./estratti/elenco.xlsx")
+        except FileNotFoundError:
+            messagebox.showinfo('Nessun File', 'Inserire file nella cartella estratti ')
+            return
         df_dict = df.to_dict(orient="dict")
 
         tot_rec =len(df_dict["CAUSALE"])
@@ -189,12 +203,11 @@ class Archive:
                            "LEFT JOIN sub_categories AS s ON s.id_subcat = m.id_subcat").fetchall()
             string_to_search = df_dict["DESCRIZIONE OPERAZIONE"][rec].upper()
 
-
+            cat_subcat_match = ['', '']
             for element in string_list:
                 if string_to_search.find(element[2]) >=0:
                     cat_subcat_match = [element[0],element[1]]
-                else:
-                    cat_subcat_match = ['','']
+
 
 
             self.arc_tree.insert('',index="end",iid=count,values=(

@@ -43,7 +43,8 @@ class Categories:
 
         self.populate_tree()
 
-        self.cat_mask.mainloop()
+
+        #self.cat_mask.mainloop()
 
 
     def get_subcat(self,event):
@@ -57,7 +58,7 @@ class Categories:
                                         "WHERE categories.category=?", (cat_selected,)).fetchall()
         subcat_list = [subcat[1] for subcat in selected_cat_list]
 
-        if subcat_list[0] != None:
+        if subcat_list[0] is not None:
             self.subcat_cbx.config(values=subcat_list)
         else:
             self.subcat_cbx.config(values=[''])
@@ -69,12 +70,8 @@ class Categories:
         con = sqlite3.connect('database/database.db')
         cur = con.cursor()
 
-        #TODO id_cat as str - number not in sequence
-        id_cat = int(cur.execute("SELECT MAX(id_cat) FROM categories").fetchone()[0])
-        if id_cat == None:
-            id_cat = 0
-        else:
-            id_cat+=1
+        id_cat = cur.execute("SELECT COALESCE(MAX(id_cat)+1,0) FROM categories").fetchone()[0]
+
         category=self.cat_cbx.get()
 
         category_list= [cat[0] for cat in cur.execute("SELECT category FROM categories").fetchall()]
@@ -101,12 +98,8 @@ class Categories:
         con = sqlite3.connect('database/database.db')
         cur = con.cursor()
 
-        #TODO fix max value in integer type
-        id_subcat = cur.execute("SELECT MAX(id_subcat) FROM sub_categories").fetchone()[0]
-        if id_subcat == None:
-            id_subcat = 0
-        else:
-            id_subcat+=1
+        id_subcat = cur.execute("SELECT COALESCE (MAX(id_subcat)+1,0) FROM sub_categories").fetchone()[0]
+
         subcat=self.subcat_cbx.get()
         category = self.cat_cbx.get()
 
@@ -115,7 +108,7 @@ class Categories:
 
         id_cat = cur.execute(f"SELECT id_cat FROM categories WHERE category = '{category}'").fetchone()[0]
 
-        cod_subcat = f"{subcat}_{id_subcat}"
+
 
         if subcat == "":
             error_no_record = messagebox.showerror("Error: No subcategory digited",
@@ -131,7 +124,7 @@ class Categories:
             want_to_insert = messagebox.askokcancel("insert new subcategory?",
                                    f"Do you want to insert the subcategory: {subcat}?",)
             if want_to_insert:
-                cur.execute("INSERT INTO sub_categories VALUES (?,?,?,?)", (id_subcat,id_cat,cod_subcat,subcat))
+                cur.execute("INSERT INTO sub_categories VALUES (?,?,?)", (id_subcat,id_cat,subcat))
                 con.commit()
                 con.close()
 
@@ -142,16 +135,15 @@ class Categories:
         con = sqlite3.connect('database/database.db')
         cur = con.cursor()
         category_list = [cat[0] for cat in cur.execute("SELECT category FROM categories").fetchall()]
+        self.cat_tree.delete(*self.cat_tree.get_children())
 
-        count=0
+        count = 0
         for cat in category_list:
-            if self.cat_tree.exists(str(count)) ==1:
-                count+=1
-            else:
-                self.cat_tree.insert(parent='',index="end",id=count, values=(cat,))
-                count +=1
+            self.cat_tree.insert(parent='', index="end", id=count, values=(cat,))
+            count += 1
 
-        #TODO insert subcategories in treeview
+
+
         complete_cat_list = cur.execute('SELECT categories.category, sub_categories.subcategory '
              'FROM categories '
              'LEFT JOIN sub_categories ON categories.id_cat=sub_categories.id_cat').fetchall()
@@ -165,8 +157,4 @@ class Categories:
                     self.cat_tree.insert(parent=cat, index="end", id=subcount, values=(sub[1],))
                     n_sub+=1
 
-
-
-        #TODO insert subcategories in treeview
         self.cat_cbx.config(values=category_list)
-        #TODO insert subcat in cbx in relation to category
