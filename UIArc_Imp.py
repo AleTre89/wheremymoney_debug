@@ -11,8 +11,8 @@ import openpyxl
 
 #TODO create 2 different archives for importing and visualizing historical data
 class Archive:
-    def __init__(self,root):
-        self.arc_mask = tk.Toplevel(root)
+    def __init__(self):
+        self.arc_mask = tk.Toplevel()
         self.arc_mask.title("Archive")
         self.arc_mask.geometry("1200x600")
 

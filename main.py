@@ -35,8 +35,8 @@ def add_record():
 def goto_cat_mask():
     open_cat_mask = Categories()
 
-def goto_archive(root):
-    open_archive = Archive(root)
+def goto_archive():
+    open_archive = Archive()
 
 def goto_match():
     open_match = Matching()
@@ -60,9 +60,9 @@ subcategory_cbx = ttk.Combobox(mask, values=["Furniture","Maintenance"])
 #buttons
 add_button = tk.Button(mask, text="Add",command=add_record)
 import_button = tk.Button(mask, text="Import excel",
-                          command= partial(goto_archive,mask))
+                          command= goto_archive)
 archive_button = tk.Button(mask, text="Archive",
-                           command=partial(goto_archive,mask))
+                           command=goto_archive)
 categories_button = tk.Button(mask, text="Categories",command=goto_cat_mask)
 cat_matching_button = tk.Button(mask, text="Categories matching", command=goto_match)
 
