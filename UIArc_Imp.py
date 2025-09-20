@@ -5,12 +5,16 @@ import pandas as pd
 import sqlite3
 import datetime as dt
 from tkinter import messagebox
+from functools import partial
+
+import datetime
 
 from UIMatching import Matching
 import openpyxl
 
 #TODO create 2 different archives for importing and visualizing historical data
-class Archive:
+
+class ArchiveBase:
     def __init__(self):
         self.arc_mask = tk.Toplevel()
         self.arc_mask.title("Archive")
@@ -35,11 +39,6 @@ class Archive:
         self.arc_tree.column("Sub-Category",width=150)
         self.arc_tree.heading("Sub-Category", text="Sub-Category")
 
-
-
-        self.description_text= tk.Text(self.arc_mask,height=3,width=100,wrap="word")
-
-
         self.date_lbl = tk.Label(self.arc_mask,text='Date')
         self.amount_lbl = tk.Label(self.arc_mask, text='Amount')
         self.category_lbl = tk.Label(self.arc_mask, text='Category')
@@ -51,8 +50,9 @@ class Archive:
         self.subcat_cbx = ttk.Combobox(self.arc_mask, state='readonly')
 
         self.update_button = tk.Button(self.arc_mask,text='Update', command=self.update_item)
-        self.upload_button = tk.Button(self.arc_mask,text='Upload', command=self.upload_to_db)
-        self.cat_match_button = tk.Button(self.arc_mask,text='Category Matching',command=self.goto_match)
+        
+        self.description_text= tk.Text(self.arc_mask,height=3,width=100,wrap="word")
+
 
         self.arc_tree.grid(row=1,column=0,padx=10,pady=10,rowspan=7)
 
@@ -66,17 +66,78 @@ class Archive:
         self.subcat_cbx.grid(row=4, column=2, padx=10, pady=10)
 
         self.update_button.grid(row=5, column=2, padx=10, pady=10)
-        self.upload_button.grid(row=6, column=2, padx=10, pady=10)
-        self.cat_match_button.grid(row=7, column=2, padx=10, pady=10)
-
         self.description_text.grid(row=8,column=0,padx=10,pady=10)
-
 
         self.arc_tree.bind('<<TreeviewSelect>>',self.get_descr)
         self.cat_cbx.bind('<<ComboboxSelected>>',self.get_subcat)
 
-        self.getdata()
+        
         self.cbx_filling()
+
+    def get_descr(self,event):
+        desc_text = self.arc_tree.selection()[0]
+        description = self.arc_tree.item(desc_text)['values']
+
+        self.description_text.config(state='normal')
+        self.description_text.delete('1.0','end')
+        self.description_text.insert('end',description[2])
+        self.description_text.config(state='disabled')
+
+        self.date_text.config(text=description[0])
+        self.amount_text.config(text=description[1])
+
+    def update_item(self):
+        #TODO if cbx emtpy error
+        cat_value = self.cat_cbx.get()
+        subcat_value = self.subcat_cbx.get()
+
+
+        item=self.arc_tree.selection()[0]
+        date = self.arc_tree.item(item)['values'][0]
+        amount = self.arc_tree.item(item)['values'][1]
+        description = self.arc_tree.item(item)['values'][2]
+
+        self.arc_tree.item(item, values=(date,amount,description,cat_value,subcat_value))
+
+
+    def cbx_filling(self):
+        con = sqlite3.connect('database/database.db')
+        cur = con.cursor()
+        category_list = [cat[0] for cat in cur.execute("SELECT category FROM categories").fetchall()]
+        self.cat_cbx.config(values=category_list)
+
+    def get_subcat(self,event):
+        self.subcat_cbx.set('')
+        cat_selected =self.cat_cbx.get()
+        con = sqlite3.connect('database/database.db')
+        cur = con.cursor()
+        selected_cat_list = cur.execute("SELECT categories.category, sub_categories.subcategory "
+             "FROM categories "
+             "LEFT JOIN sub_categories ON categories.id_cat=sub_categories.id_cat "
+                                        "WHERE categories.category=?", (cat_selected,)).fetchall()
+        subcat_list = [subcat[1] for subcat in selected_cat_list]
+
+        if subcat_list[0] != None:
+            self.subcat_cbx.config(values=subcat_list)
+        else:
+            self.subcat_cbx.config(values=[''])
+
+        con.close()
+
+
+class Import(ArchiveBase):
+    def __init__(self):
+        super().__init__()
+        self.upload_button = tk.Button(self.arc_mask,text='Upload', command=self.upload_to_db)
+        self.cat_match_button = tk.Button(self.arc_mask,text='Category Matching',command=self.goto_match)
+
+
+        self.upload_button.grid(row=6, column=2, padx=10, pady=10)
+        self.cat_match_button.grid(row=7, column=2, padx=10, pady=10)
+
+
+        self.getdata()
+
 
 
     def goto_match(self):
@@ -115,74 +176,21 @@ class Archive:
             #amount
             amount = values_import[1]
 
+            #description
+            descr = values_import[2]
 
-            cur.execute('INSERT INTO record VALUES (?,?,?,?,?)',
-                        (id_record,id_cat,id_subcat,date_to_insert,amount))
+
+            cur.execute('INSERT INTO record VALUES (?,?,?,?,?,?)',
+                        (id_record,id_cat,id_subcat,date_to_insert,amount,descr))
             con.commit()
             con.close()
 
             if os.path.exists('estratti/elenco.xlsx'):
                 os.remove('estratti/elenco.xlsx')
 
+    
 
-
-    def update_item(self):
-        #TODO if cbx emtpy error
-        cat_value = self.cat_cbx.get()
-        subcat_value = self.subcat_cbx.get()
-
-
-        item=self.arc_tree.selection()[0]
-        date = self.arc_tree.item(item)['values'][0]
-        amount = self.arc_tree.item(item)['values'][1]
-        description = self.arc_tree.item(item)['values'][2]
-
-        self.arc_tree.item(item, values=(date,amount,description,cat_value,subcat_value))
-
-
-
-
-    def get_descr(self,event):
-        desc_text = self.arc_tree.selection()[0]
-        description = self.arc_tree.item(desc_text)['values']
-
-        self.description_text.config(state='normal')
-        self.description_text.delete('1.0','end')
-        self.description_text.insert('end',description[2])
-        self.description_text.config(state='disabled')
-
-        self.date_text.config(text=description[0])
-        self.amount_text.config(text=description[1])
-
-    def cbx_filling(self):
-        con = sqlite3.connect('database/database.db')
-        cur = con.cursor()
-        category_list = [cat[0] for cat in cur.execute("SELECT category FROM categories").fetchall()]
-        self.cat_cbx.config(values=category_list)
-
-    def get_subcat(self,event):
-        self.subcat_cbx.set('')
-        cat_selected =self.cat_cbx.get()
-        con = sqlite3.connect('database/database.db')
-        cur = con.cursor()
-        selected_cat_list = cur.execute("SELECT categories.category, sub_categories.subcategory "
-             "FROM categories "
-             "LEFT JOIN sub_categories ON categories.id_cat=sub_categories.id_cat "
-                                        "WHERE categories.category=?", (cat_selected,)).fetchall()
-        subcat_list = [subcat[1] for subcat in selected_cat_list]
-
-        if subcat_list[0] != None:
-            self.subcat_cbx.config(values=subcat_list)
-        else:
-            self.subcat_cbx.config(values=[''])
-
-        con.close()
-
-    # DATA CONTABILE
-    # DATA VALUTA
-    # CAUSALE
-    # DESCRIZIONE OPERAZIONE
-    # IMPORTO IN EURO
+    
     def getdata(self):
         try:
             df = pd.read_excel("./estratti/elenco.xlsx")
@@ -219,3 +227,69 @@ class Archive:
                 cat_subcat_match[1]
             ))
             count+=1
+
+class Archive(ArchiveBase):
+    def __init__(self):
+        super().__init__()
+
+        self.arch_db = 'database/database.db'
+
+        self.dateFrom = tk.Entry(self.arc_mask)
+        self.dateTo = tk.Entry(self.arc_mask)
+        self.dateFrom.insert('0','dd/mm/yyyy')
+        self.dateTo.insert('0','dd/mm/yyyy')
+        self.dateFilter = tk.Button(self.arc_mask,text='Filtra per data', 
+                                    command=partial(self.filter_archive,self.arch_db))
+
+        self.dateFrom.grid(row=7,column=2)
+        self.dateTo.grid(row=8,column=2)
+        self.dateFilter.grid(row=9,column=2)
+
+        self.filter_archive(self.arch_db)
+    
+    def convert_date(self,date,std):
+            '''Date conversion from text for filtering in database. Returns SQL format date.
+            Standard date is returned if ValueError to get all the rows in the filter
+            Args: date: from Entry widgets format dd/mm/yyyy - std: year for standard date'''
+            try:
+                date_format = datetime.datetime.strptime(date,'%d/%m/%Y').date()
+            except ValueError:
+                date_format = datetime.date(std,1,1)
+            finally:  
+                date_filter = datetime.datetime.strftime(date_format, '%Y-%m-%d')       
+                return date_filter
+
+
+    
+    def filter_archive(self, database):
+        con = sqlite3.connect(database)
+        con.row_factory =  sqlite3.Row
+        cur = con.cursor()
+        count = 0
+        
+        self.arc_tree.delete(*self.arc_tree.get_children())
+        dateFrom_text = self.dateFrom.get()
+        deteTo_text = self.dateTo.get()
+        
+        dateFrom_filter = self.convert_date(dateFrom_text,1990)
+        dateTo_filter = self.convert_date(deteTo_text,2099)
+
+
+        records = cur.execute('SELECT r.date,r.amount,r.description,c.category,s.subcategory    ' \
+        'FROM record AS r ' \
+        'LEFT JOIN categories AS c ON c.id_cat = r.id_cat ' \
+        'LEFT JOIN sub_categories AS s ON s.id_subcat = r.id_subcat '
+        'WHERE r.date BETWEEN ? AND ?', (dateFrom_filter,dateTo_filter)).fetchall()
+
+        for r in records:
+            date = r['date']
+            amount = r['amount']
+            descr = r['description']
+            cat = r['category']
+            subcat = r['subcategory']
+
+            self.arc_tree.insert('', index='end', id=count,
+                             values=(date,amount,descr,cat,subcat))
+            count +=1
+
+        con.close()

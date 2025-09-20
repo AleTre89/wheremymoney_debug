@@ -26,7 +26,8 @@ record_table = ('CREATE TABLE IF NOT EXISTS record('
                 'id_cat INTEGER NOT NULL,'
                 'id_subcat INTEGER NOT NULL,'
                 'date DATE NOT NULL,'
-                'amount DOUBLE NOT NULL,'
+                'amount DOUBLE NOT NULL,' \
+                'description VARCHAR'
                 'FOREIGN KEY (id_cat) REFERENCES categories (id_cat)'
                 'FOREIGN KEY (id_subcat) REFERENCES sub_categories (id_subcat))')
 
@@ -35,10 +36,11 @@ del_subcat = 'DELETE FROM sub_categories'
 del_record = 'DELETE FROM record'
 del_match = 'DELETE FROM matching'
 
-cur.execute(del_match)
-cur.execute(del_cat)
-cur.execute(del_subcat)
-cur.execute(del_record)
+# cur.execute(del_match)
+# cur.execute(del_cat)
+# cur.execute(del_subcat)
+# cur.execute(del_record)
+
 
 con.commit()
 con.close()
